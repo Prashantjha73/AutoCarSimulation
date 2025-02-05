@@ -24,8 +24,8 @@ internal class Program
         // Register abstractions with their concrete implementations.
         services.AddSingleton<ICarControlService, CarControlService>();
         services.AddSingleton<ICarStore, CarStore>();
-        services.AddSingleton<ISimulationEngine, SimulationEngine>();
-        // SimulationRunner will depend on ICarController and ICarStore.
+        services.AddSingleton<IFieldStore, FieldStore>();
+        services.AddTransient<ISimulationEngine, SimulationEngine>();
         services.AddSingleton<SimulationRunner>();
     }
 }
