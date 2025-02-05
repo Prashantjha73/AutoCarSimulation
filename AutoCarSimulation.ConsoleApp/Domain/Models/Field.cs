@@ -12,8 +12,14 @@ namespace AutoCarSimulation.ConsoleApp.Domain.Models
 
         public Field(int width, int height)
         {
+            if (width <= 0 || height <= 0)
+                throw new ArgumentException("Field dimensions must be positive.");
             Width = width;
             Height = height;
         }
+
+        public bool IsWithinBounds(Position position) =>
+            position.X >= 0 && position.X < Width &&
+            position.Y >= 0 && position.Y < Height;
     }
 }
