@@ -3,8 +3,19 @@ namespace AutoCarSimulation.ConsoleApp.Domain.Models
     using AutoCarSimulation.ConsoleApp.Domain.Enums;
     public class Car
     {
+        /// <summary>
+        /// The name of the car.
+        /// </summary>
         public string Name { get; }
+
+        /// <summary>
+        /// The position.
+        /// </summary>
         public Position Position { get; set; }
+
+        /// <summary>
+        /// The direction.
+        /// </summary>
         public Direction Direction { get; set; }
 
         /// <summary>
@@ -16,10 +27,29 @@ namespace AutoCarSimulation.ConsoleApp.Domain.Models
         /// The index of the next command to execute.
         /// </summary>
         public int CommandIndex { get; set; }
+
+        /// <summary>
+        /// True if car collides else false.
+        /// </summary>
         public bool IsCollided { get; set; } = false;
+
+        /// <summary>
+        /// Index of collision step.
+        /// </summary>
         public int? CollisionStep { get; set; }
+
+        /// <summary>
+        /// The collision message.
+        /// </summary>
         public string CollisionMessage { get; set; } = string.Empty;
 
+        /// <summary>
+        /// The car.
+        /// </summary>
+        /// <param name="name">Name of the car</param>
+        /// <param name="position">Initial position on field</param>
+        /// <param name="direction">Initial direction (N,S,E,W)</param>
+        /// <param name="commandString">Commands</param>
         public Car(string name, Position position, Direction direction, string commandString)
         {
             Name = name;
@@ -29,6 +59,9 @@ namespace AutoCarSimulation.ConsoleApp.Domain.Models
             CommandIndex = 0;
         }
 
+        /// <summary>
+        /// Has commands to execute
+        /// </summary>
         public bool HasMoreCommands => CommandIndex < CommandString.Length;
 
         /// <summary>

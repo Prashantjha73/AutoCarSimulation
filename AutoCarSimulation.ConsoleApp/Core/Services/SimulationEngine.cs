@@ -5,6 +5,7 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
     using AutoCarSimulation.ConsoleApp.Domain.Models;
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
 
+    /// <inheritdoc />
     public class SimulationEngine : ISimulationEngine
     {
         private readonly IFieldStore _fieldStore;
@@ -17,7 +18,7 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
             _carStore = carStore;
             _carController = carController;
         }
-
+        /// <inheritdoc />
         public void RunSimulation()
         {
             Field field = _fieldStore.GetField();
