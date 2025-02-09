@@ -1,32 +1,33 @@
 namespace AutoCarSimulation.ConsoleApp.Domain.Models
 {
     using AutoCarSimulation.ConsoleApp.Domain.Enums;
-    public class Car
+
+    public class Car(string name, Position position, Direction direction, string commandString)
     {
         /// <summary>
         /// The name of the car.
         /// </summary>
-        public string Name { get; }
+        public string Name { get; } = name;
 
         /// <summary>
         /// The position.
         /// </summary>
-        public Position Position { get; set; }
+        public Position Position { get; set; } = position;
 
         /// <summary>
         /// The direction.
         /// </summary>
-        public Direction Direction { get; set; }
+        public Direction Direction { get; set; } = direction;
 
         /// <summary>
         /// The command string (e.g., "FFRFFFFRRL") to be processed.
         /// </summary>
-        public string CommandString { get; }
+        public string CommandString { get; } = commandString.ToUpper();
 
         /// <summary>
         /// The index of the next command to execute.
         /// </summary>
-        public int CommandIndex { get; set; }
+        public int CommandIndex { get; set; } = 0;
 
         /// <summary>
         /// True if car collides else false.
@@ -42,22 +43,6 @@ namespace AutoCarSimulation.ConsoleApp.Domain.Models
         /// The collision message.
         /// </summary>
         public string CollisionMessage { get; set; } = string.Empty;
-
-        /// <summary>
-        /// The car.
-        /// </summary>
-        /// <param name="name">Name of the car</param>
-        /// <param name="position">Initial position on field</param>
-        /// <param name="direction">Initial direction (N,S,E,W)</param>
-        /// <param name="commandString">Commands</param>
-        public Car(string name, Position position, Direction direction, string commandString)
-        {
-            Name = name;
-            Position = position;
-            Direction = direction;
-            CommandString = commandString.ToUpper();
-            CommandIndex = 0;
-        }
 
         /// <summary>
         /// Has commands to execute

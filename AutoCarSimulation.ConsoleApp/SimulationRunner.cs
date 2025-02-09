@@ -106,7 +106,7 @@ namespace AutoCarSimulation.ConsoleApp
                 return;
             }
 
-            Console.WriteLine($"Please enter the commands for car {name}:");
+            Console.WriteLine($"Please enter the commands for car {name}. eg. FFRRLF (F-Forward, L-Turn Left, R-Turn Right):");
             string? commands = Console.ReadLine();
 
             _carStore.AddCar(new Car(name, pos, direction, commands ?? string.Empty));
@@ -137,6 +137,13 @@ namespace AutoCarSimulation.ConsoleApp
 
         private void RunSimulationAndDisplayResults()
         {
+            var cars = _carStore.GetCars();
+            if (cars == null || !cars.Any())
+            {
+                Console.WriteLine("There is no car on field for simulation.");
+                return;
+            }
+
             Console.WriteLine("Your current list of cars are:");
             foreach (var car in _carStore.GetCars())
             {
@@ -154,9 +161,7 @@ namespace AutoCarSimulation.ConsoleApp
 
         private bool PromptStartOver()
         {
-            Console.WriteLine("Please choose from the following options:\n[1] Start over\n[2] Exit\nPress any key to exit");
-            Console.WriteLine("[1] Start over");
-            Console.WriteLine("[2] Exit");
+            Console.WriteLine("Please choose from the following options:\n[1] Start over\n[2] Exit\nOr press any key to exit");
             string? postOption = Console.ReadLine();
 
             if (postOption == "1")
