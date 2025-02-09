@@ -137,10 +137,14 @@ namespace AutoCarSimulation.ConsoleApp
 
             simulationEngine.RunSimulation();
 
-            Console.WriteLine("After simulation, the result is:");
-            foreach (var car in simulationEngine.GetCarsInSimulation())
+            var cars = simulationEngine.GetCarsInSimulation();
+            if (cars != null && cars.Any())
             {
-                Console.WriteLine("- " + car.ToString());
+                Console.WriteLine("After simulation, the result is:");
+                foreach (var car in cars)
+                {
+                    Console.WriteLine("- " + car.ToString());
+                }
             }
         }
 
