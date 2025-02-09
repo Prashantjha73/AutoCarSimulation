@@ -6,53 +6,58 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
 
     /// <inheritdoc />
-    public class SimulationEngine : ISimulationEngine
+    public class SimulationEngine(IFieldStore fieldStore, ICarStore carStore, ICarControlService carController) : ISimulationEngine
     {
-        private readonly IFieldStore _fieldStore;
-        private readonly ICarStore _carStore;
-        private readonly ICarControlService _carController;
+        private readonly IFieldStore _fieldStore = fieldStore;
+        private readonly ICarStore _carStore = carStore;
+        private readonly ICarControlService _carController = carController;
 
-        public SimulationEngine(IFieldStore fieldStore, ICarStore carStore, ICarControlService carController)
-        {
-            _fieldStore = fieldStore;
-            _carStore = carStore;
-            _carController = carController;
-        }
         /// <inheritdoc />
         public void RunSimulation()
         {
             Field field = _fieldStore.GetField();
             int step = 1;
-            while (_carStore.GetCars().Any(car => !car.IsCollided && car.HasMoreCommands))
+
+            while (HasActiveCars())
             {
-                // Process one command per active car.
-                foreach (var car in _carStore.GetCars().Where(car => !car.IsCollided && car.HasMoreCommands))
-                {
-                    _carController.ProcessNextCommand(car, field);
-                }
+                ProcessCarCommands(field);
+                HandleCollisions(step);
+                step++;
+            }
+        }
 
-                // Check for collisions: any position with more than one active car.
-                var groups = _carStore.GetCars()
-                                      .Where(c => !c.IsCollided)
-                                      .GroupBy(c => c.Position)
-                                      .Where(g => g.Count() > 1);
+        private bool HasActiveCars()
+        {
+            return _carStore.GetCars().Any(car => !car.IsCollided && car.HasMoreCommands);
+        }
 
-                foreach (var group in groups)
+        private void ProcessCarCommands(Field field)
+        {
+            foreach (var car in _carStore.GetCars().Where(car => !car.IsCollided && car.HasMoreCommands))
+            {
+                _carController.ProcessNextCommand(car, field);
+            }
+        }
+
+        private void HandleCollisions(int step)
+        {
+            var groupedCars = _carStore.GetCars()
+                                       .Where(c => !c.IsCollided)
+                                       .GroupBy(c => c.Position)
+                                       .Where(g => g.Count() > 1);
+
+            foreach (var group in groupedCars)
+            {
+                var collidedCars = group.ToList();
+                foreach (var car in collidedCars)
                 {
-                    var collidedCars = group.ToList();
-                    foreach (var car in collidedCars)
+                    if (!car.IsCollided)
                     {
-                        if (!car.IsCollided)
-                        {
-                            string otherNames = string.Join(" and ",
-                                collidedCars.Where(c => c != car).Select(c => c.Name));
-                            car.IsCollided = true;
-                            car.CollisionStep = step;
-                            car.CollisionMessage = $"collides with {otherNames} at ({car.Position.X},{car.Position.Y}) at step {step}";
-                        }
+                        car.IsCollided = true;
+                        car.CollisionStep = step;
+                        car.CollisionMessage = $"collides with {string.Join(" and ", collidedCars.Where(c => c != car).Select(c => c.Name))} at ({car.Position.X},{car.Position.Y}) at step {step}";
                     }
                 }
-                step++;
             }
         }
     }
