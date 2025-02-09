@@ -1,21 +1,19 @@
 
 namespace AutoCarSimulation.ConsoleApp.Core.Services
 {
+    using System.Collections.Generic;
     using AutoCarSimulation.ConsoleApp.Core.Interfaces;
     using AutoCarSimulation.ConsoleApp.Domain.Models;
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
 
     /// <inheritdoc />
-    public class SimulationEngine(IFieldStore fieldStore, ICarStore carStore, ICarControlService carController) : ISimulationEngine
+    public class SimulationEngine(IFieldStore fieldStore, ICarStore carStore, ICarControlService carControlService) : ISimulationEngine
     {
-        private readonly IFieldStore _fieldStore = fieldStore;
-        private readonly ICarStore _carStore = carStore;
-        private readonly ICarControlService _carController = carController;
 
         /// <inheritdoc />
         public void RunSimulation()
         {
-            Field field = _fieldStore.GetField();
+            Field field = fieldStore.GetField();
             int step = 1;
 
             while (HasActiveCars())
@@ -26,22 +24,63 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
             }
         }
 
+        /// <inheritdoc />
+        public void AddCarInSimulation(Car car)
+        {
+            Field currentField = fieldStore.GetField();
+            if (!currentField.IsWithinBounds(car.Position))
+            {
+                throw new Exception("Position is out of field bounds.");
+            }
+
+            if (carStore.GetCars().ToList().Exists(c => c.Name == car.Name))
+            {
+                throw new Exception($"Car name {car.Name} already exists");
+            }
+
+            if (carStore.GetCars().ToList().Exists(c => c.Position == car.Position))
+            {
+                throw new Exception($"{car.Position} is already occupied");
+            }
+
+            carStore.AddCar(car);
+        }
+
+        /// <inheritdoc />
+        public void CreateFieldForSimulation(Field field)
+        {
+            fieldStore.SetField(field);
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<Car> GetCarsInSimulation()
+        {
+            return carStore.GetCars();
+        }
+
+        /// <inheritdoc />
+        public void InitialiseSimulation()
+        {
+            fieldStore.Clear();
+            carStore.Clear();
+        }
+
         private bool HasActiveCars()
         {
-            return _carStore.GetCars().Any(car => !car.IsCollided && car.HasMoreCommands);
+            return carStore.GetCars().Any(car => !car.IsCollided && car.HasMoreCommands);
         }
 
         private void ProcessCarCommands(Field field)
         {
-            foreach (var car in _carStore.GetCars().Where(car => !car.IsCollided && car.HasMoreCommands))
+            foreach (var car in carStore.GetCars().Where(car => !car.IsCollided && car.HasMoreCommands))
             {
-                _carController.ProcessNextCommand(car, field);
+                carControlService.ProcessNextCommand(car, field);
             }
         }
 
         private void HandleCollisions(int step)
         {
-            var groupedCars = _carStore.GetCars()
+            var groupedCars = carStore.GetCars()
                                        .Where(c => !c.IsCollided)
                                        .GroupBy(c => c.Position)
                                        .Where(g => g.Count() > 1);

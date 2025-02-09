@@ -5,83 +5,103 @@ namespace AutoCarSimulation.Tests.Core
     using AutoCarSimulation.ConsoleApp.Core.Services;
     using AutoCarSimulation.ConsoleApp.Domain.Enums;
     using AutoCarSimulation.ConsoleApp.Domain.Models;
-    using AutoCarSimulation.ConsoleApp.Infrastructure.Data;
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
     using Moq;
 
     public class SimulationEngineTests
     {
-        private readonly IFieldStore _fieldStore;
-        private readonly ICarStore _carStore;
-        private readonly Mock<ICarControlService> _mockCarController;
-        private readonly ISimulationEngine _simulationEngine;
+        private readonly Mock<IFieldStore> _mockFieldStore;
+        private readonly Mock<ICarStore> _mockCarStore;
+        private readonly ICarControlService _mockCarController;
+        private readonly SimulationEngine _simulationEngine;
 
         public SimulationEngineTests()
         {
-            _fieldStore = new FieldStore();
-            _carStore = new CarStore();
-            _mockCarController = new Mock<ICarControlService>();
-            _simulationEngine = new SimulationEngine(_fieldStore, _carStore, _mockCarController.Object);
+            _mockFieldStore = new Mock<IFieldStore>();
+            _mockCarStore = new Mock<ICarStore>();
+            _mockCarController = new CarControlService();
+
+            _simulationEngine = new SimulationEngine(
+                _mockFieldStore.Object,
+                _mockCarStore.Object,
+                _mockCarController
+            );
         }
 
         [Fact]
-        public void RunSimulation_ProcessesCommands_WithoutCollision()
+        public void RunSimulation_ShouldCompleteWithoutErrors_WhenNoCarsPresent()
         {
             // Arrange
-            Field field = new Field(10, 10);
-            _fieldStore.SetField(field);
-
-            Car car = new Car("A", new Position(1, 1), Direction.N, "F");
-            _carStore.AddCar(car);
-
-            _mockCarController.Setup(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()))
-                .Callback<Car, Field>((c, f) =>
-                {
-                    c.AdvanceCommand();
-                    if (c.CommandString[c.CommandIndex - 1] == 'F')
-                    {
-                        var newPos = c.Position.Move(c.Direction);
-                        if (f.IsWithinBounds(newPos))
-                        {
-                            c.Position = newPos;
-                        }
-                    }
-                });
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car>());
 
             // Act
             _simulationEngine.RunSimulation();
 
-            // Assert:
-            _mockCarController.Verify(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()), Times.Exactly(1));
-            Assert.False(car.HasMoreCommands);
-            Assert.Equal(new Position(1, 2), car.Position);
+            // Assert
+            _mockCarStore.Verify(c => c.GetCars(), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void RunSimulation_ShouldProcessCommands_WhenCarsHaveCommands()
+        {
+            // Arrange
+            var car = new Car("A", new Position(1, 2), Direction.N, "FFRFFFFRRL");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(10, 10));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car });
+
+            // Act
+            _simulationEngine.RunSimulation();
+
+            // Assert
+            Assert.Equal(new Position(5, 4), car.Position);
+            Assert.Equal(Direction.S, car.Direction);
             Assert.False(car.IsCollided);
         }
 
         [Fact]
-        public void RunSimulation_SetsCollision_WhenCarsCollide()
+        public void RunSimulation_ShouldStop_WhenAllCarsCollide()
         {
             // Arrange
-            Field field = new Field(10, 10);
-            _fieldStore.SetField(field);
-            Car car1 = new Car("A", new Position(1, 1), Direction.N, "F");
-            Car car2 = new Car("B", new Position(1, 1), Direction.N, "F");
-            _carStore.AddCar(car1);
-            _carStore.AddCar(car2);
-
-            _mockCarController.Setup(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()))
-                .Callback<Car, Field>((c, f) => c.AdvanceCommand());
+            var car1 = new Car("Car1", new Position(1, 2), Direction.N, "FFRFFFFRRL");
+            var car2 = new Car("Car2", new Position(7, 8), Direction.W, "FFLFFFFFFF");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(10, 10));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car1, car2 });
 
             // Act
             _simulationEngine.RunSimulation();
 
-            // Assert:
-            _mockCarController.Verify(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()), Times.Exactly(2));
-            Assert.True(car1.IsCollided);
-            Assert.True(car2.IsCollided);
-            Assert.NotNull(car1.CollisionStep);
+            // Assert
             Assert.Equal(car1.CollisionStep, car2.CollisionStep);
             Assert.Equal(car1.Position, car2.Position);
+        }
+
+        [Fact]
+        public void HandleCollisions_ShouldThrowException_WhenCarsOccupySamePosition()
+        {
+            // Arrange
+            var car1 = new Car("Car1", new Position(2, 2), Direction.N, "F");
+            var car2 = new Car("Car2", new Position(2, 2), Direction.S, "F");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car1 });
+
+            // Act
+            var exception = Assert.Throws<Exception>(() => _simulationEngine.AddCarInSimulation(car2));
+        }
+
+        [Fact]
+        public void ProcessCarCommands_ShouldNotMoveCar_WhenOutOfBounds()
+        {
+            // Arrange
+            var car = new Car("EdgeCar", new Position(4, 4), Direction.E, "F");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car });
+
+            // Act
+            _simulationEngine.RunSimulation();
+
+            // Assert
+            Assert.Equal(4, car.Position.X);
         }
     }
 }
