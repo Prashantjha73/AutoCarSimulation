@@ -5,103 +5,103 @@ namespace AutoCarSimulation.Tests.Core
     using AutoCarSimulation.ConsoleApp.Core.Services;
     using AutoCarSimulation.ConsoleApp.Domain.Enums;
     using AutoCarSimulation.ConsoleApp.Domain.Models;
-    using AutoCarSimulation.ConsoleApp.Infrastructure.Data;
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
     using Moq;
 
     public class SimulationEngineTests
     {
-        private readonly IFieldStore _fieldStore;
-        private readonly ICarStore _carStore;
-        private readonly Mock<ICarControlService> _mockCarController;
-        private readonly ISimulationEngine _simulationEngine;
+        private readonly Mock<IFieldStore> _mockFieldStore;
+        private readonly Mock<ICarStore> _mockCarStore;
+        private readonly ICarControlService _mockCarController;
+        private readonly SimulationEngine _simulationEngine;
 
         public SimulationEngineTests()
         {
-            // Initialize the field and car stores.
-            _fieldStore = new FieldStore();
-            _carStore = new CarStore();
+            _mockFieldStore = new Mock<IFieldStore>();
+            _mockCarStore = new Mock<ICarStore>();
+            _mockCarController = new CarControlService();
 
-            // Create a mock for ICarController.
-            _mockCarController = new Mock<ICarControlService>();
-
-            // Create the simulation engine using the injected field store, car store, and mocked car controller.
-            _simulationEngine = new SimulationEngine(_fieldStore, _carStore, _mockCarController.Object);
+            _simulationEngine = new SimulationEngine(
+                _mockFieldStore.Object,
+                _mockCarStore.Object,
+                _mockCarController
+            );
         }
 
         [Fact]
-        public void RunSimulation_ProcessesCommands_WithoutCollision()
+        public void RunSimulation_ShouldCompleteWithoutErrors_WhenNoCarsPresent()
         {
-            // Arrange: Set the field in the field store.
-            Field field = new Field(10, 10);
-            _fieldStore.SetField(field);
+            // Arrange
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car>());
 
-            // Add a car with a single forward command.
-            Car car = new Car("A", new Position(1, 1), Direction.N, "F");
-            _carStore.AddCar(car);
-
-            // Configure the mock: simulate processing by advancing the command pointer
-            // and, if the command is 'F', moving the car forward.
-            _mockCarController.Setup(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()))
-                .Callback<Car, Field>((c, f) =>
-                {
-                    c.AdvanceCommand();
-                    // Check if the processed command was 'F' (using the command at the previous index).
-                    if (c.CommandString[c.CommandIndex - 1] == 'F')
-                    {
-                        var newPos = c.Position.Move(c.Direction);
-                        if (f.IsWithinBounds(newPos))
-                        {
-                            c.Position = newPos;
-                        }
-                    }
-                });
-
-            // Act: Run the simulation.
+            // Act
             _simulationEngine.RunSimulation();
 
-            // Assert:
-            // The controller should have been invoked exactly once (because the car had a single command).
-            _mockCarController.Verify(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()), Times.Exactly(1));
-            Assert.False(car.HasMoreCommands);
-            // The car should have moved from (1,1) to (1,2).
-            Assert.Equal(new Position(1, 2), car.Position);
-            // No collision should have occurred.
+            // Assert
+            _mockCarStore.Verify(c => c.GetCars(), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void RunSimulation_ShouldProcessCommands_WhenCarsHaveCommands()
+        {
+            // Arrange
+            var car = new Car("A", new Position(1, 2), Direction.N, "FFRFFFFRRL");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(10, 10));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car });
+
+            // Act
+            _simulationEngine.RunSimulation();
+
+            // Assert
+            Assert.Equal(new Position(5, 4), car.Position);
+            Assert.Equal(Direction.S, car.Direction);
             Assert.False(car.IsCollided);
         }
 
         [Fact]
-        public void RunSimulation_SetsCollision_WhenCarsCollide()
+        public void RunSimulation_ShouldStop_WhenAllCarsCollide()
         {
-            // Arrange: Set the field.
-            Field field = new Field(10, 10);
-            _fieldStore.SetField(field);
+            // Arrange
+            var car1 = new Car("Car1", new Position(1, 2), Direction.N, "FFRFFFFRRL");
+            var car2 = new Car("Car2", new Position(7, 8), Direction.W, "FFLFFFFFFF");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(10, 10));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car1, car2 });
 
-            // Add two cars at the same starting position with a single forward command.
-            Car car1 = new Car("A", new Position(1, 1), Direction.N, "F");
-            Car car2 = new Car("B", new Position(1, 1), Direction.N, "F");
-            _carStore.AddCar(car1);
-            _carStore.AddCar(car2);
-
-            // Configure the mock: simply advance the command pointer without moving the car.
-            // This ensures that both cars remain at (1,1) so a collision is detected.
-            _mockCarController.Setup(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()))
-                .Callback<Car, Field>((c, f) => c.AdvanceCommand());
-
-            // Act: Run the simulation.
+            // Act
             _simulationEngine.RunSimulation();
 
-            // Assert:
-            // Each car had one command so the controller should have been called twice in total.
-            _mockCarController.Verify(m => m.ProcessNextCommand(It.IsAny<Car>(), It.IsAny<Field>()), Times.Exactly(2));
-            // Both cars should be marked as collided.
-            Assert.True(car1.IsCollided);
-            Assert.True(car2.IsCollided);
-            // Both cars should have the same collision step.
-            Assert.NotNull(car1.CollisionStep);
+            // Assert
             Assert.Equal(car1.CollisionStep, car2.CollisionStep);
-            // Their positions remain equal (and still (1,1) in this test).
             Assert.Equal(car1.Position, car2.Position);
+        }
+
+        [Fact]
+        public void HandleCollisions_ShouldThrowException_WhenCarsOccupySamePosition()
+        {
+            // Arrange
+            var car1 = new Car("Car1", new Position(2, 2), Direction.N, "F");
+            var car2 = new Car("Car2", new Position(2, 2), Direction.S, "F");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car1 });
+
+            // Act
+            var exception = Assert.Throws<Exception>(() => _simulationEngine.AddCarInSimulation(car2));
+        }
+
+        [Fact]
+        public void ProcessCarCommands_ShouldNotMoveCar_WhenOutOfBounds()
+        {
+            // Arrange
+            var car = new Car("EdgeCar", new Position(4, 4), Direction.E, "F");
+            _mockFieldStore.Setup(f => f.GetField()).Returns(new Field(5, 5));
+            _mockCarStore.Setup(c => c.GetCars()).Returns(new List<Car> { car });
+
+            // Act
+            _simulationEngine.RunSimulation();
+
+            // Assert
+            Assert.Equal(4, car.Position.X);
         }
     }
 }

@@ -60,7 +60,6 @@ namespace AutoCarSimulation.Tests.Core
         {
             // Arrange
             Field field = new Field(5, 5);
-            // Create a car with a forward command.
             Car car = new Car("TestCar", new Position(1, 1), Direction.N, "F");
 
             // Act
@@ -76,7 +75,6 @@ namespace AutoCarSimulation.Tests.Core
         {
             // Arrange
             Field field = new Field(5, 5);
-            // Place the car at the top edge and facing North.
             Car car = new Car("TestCar", new Position(1, 4), Direction.N, "F");
 
             // Act

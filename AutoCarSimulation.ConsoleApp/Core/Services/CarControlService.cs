@@ -13,26 +13,7 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
             if (!car.HasMoreCommands)
                 return;
 
-            char command = car.NextCommand.Value;
-            switch (command)
-            {
-                case 'L':
-                    car.Direction = TurnLeft(car.Direction);
-                    break;
-                case 'R':
-                    car.Direction = TurnRight(car.Direction);
-                    break;
-                case 'F':
-                    var newPosition = car.Position.Move(car.Direction);
-                    if (field.IsWithinBounds(newPosition))
-                    {
-                        car.Position = newPosition;
-                    }
-                    break;
-                default:
-                    // Ignore invalid commands.
-                    break;
-            }
+            ExecuteCommand(car, field, car.NextCommand.Value);
             car.AdvanceCommand();
         }
 
@@ -55,5 +36,30 @@ namespace AutoCarSimulation.ConsoleApp.Core.Services
             Direction.W => Direction.N,
             _ => direction,
         };
+
+        private void ExecuteCommand(Car car, Field field, char command)
+        {
+            switch (command)
+            {
+                case 'L':
+                    car.Direction = TurnLeft(car.Direction);
+                    break;
+                case 'R':
+                    car.Direction = TurnRight(car.Direction);
+                    break;
+                case 'F':
+                    TryMoveForward(car, field);
+                    break;
+            }
+        }
+
+        private void TryMoveForward(Car car, Field field)
+        {
+            var newPosition = car.Position.Move(car.Direction);
+            if (field.IsWithinBounds(newPosition))
+            {
+                car.Position = newPosition;
+            }
+        }
     }
 }

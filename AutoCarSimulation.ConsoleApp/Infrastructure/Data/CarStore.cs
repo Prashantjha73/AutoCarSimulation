@@ -5,7 +5,7 @@ namespace AutoCarSimulation.ConsoleApp.Infrastructure.Data
     using AutoCarSimulation.ConsoleApp.Infrastructure.Interface;
     public class CarStore : ICarStore
     {
-        private readonly List<Car> _cars = new List<Car>();
+        private readonly List<Car> _cars = [];
 
         public void AddCar(Car car)
         {
